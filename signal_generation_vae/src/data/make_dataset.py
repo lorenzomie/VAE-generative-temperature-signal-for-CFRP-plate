@@ -74,9 +74,13 @@ def create_dict (file_arg, frequency, counter):
         }
     return dict_sample
 
-DIRECTORY_PATH = "OGW_CFRP_Temperature_udam"
+file_Path = os.path.abspath(__file__)
+DATA_PATH = r"..\..\..\data\raw\OGW_CFRP_Temperature_udam"
+OUTPUT_PATH = r"..\..\..\data\interim\database.pkl"
+input_path = os.path.abspath(os.path.join(file_Path, DATA_PATH))
+output_path = os.path.abspath(os.path.join(file_Path, OUTPUT_PATH))
 
-my_db = create_database(DIRECTORY_PATH)
+my_db = create_database(input_path)
 # names = [dict_db["name"] for dict_db in my_db if "name" in dict_db]
 # print(names)
 
@@ -88,5 +92,13 @@ for i in range(FREQ_DIM):
 # names = [dict_db["name"] for dict_db in ordered_db if "name" in dict_db]
 # print(names)
 
-with open('database.pkl', 'wb') as file:
+print("Output Path:", output_path)
+
+if os.path.exists(output_path):
+    print("The file already exist. Removing...")
+    os.remove(output_path)
+
+print("Creating the file database.pkl (it will take a few minutes)")
+
+with open(output_path, 'wb') as file:
     pickle.dump(ordered_db, file)
