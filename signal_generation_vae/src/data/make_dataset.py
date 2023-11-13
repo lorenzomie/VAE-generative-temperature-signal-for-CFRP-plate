@@ -1,15 +1,30 @@
 """
 Description:
-This file contain a python module to reconstruct a database starting from a 
-http://openguidedwaves.de/downloads/, specifically the work done by Moll, Kexel, Pötzsch,
-Rennoch, Herrmann, A. S.: Temperature affected guided wave propagation 
-in a composite plate complementing the Open Guided Waves Platform, Scientific Data, 
-2019, 6:191 with relative DOI: 10.1038/s41597-019-0208-1
+This Python module creates a database from Open Guided Waves dataset, 
+specifically the work done by Moll, Kexel, Pötzsch, Rennoch, Herrmann, 
+A. S.: Temperature-affected guided wave propagation in a composite plate, 
+complementing the Open Guided Waves Platform, Scientific Data,
+2019, 6:191 with relative DOI: 10.1038/s41597-019-0208-1.
 
-Author: Miele Lorenzo, Lomazzi Luca
+Authors: Lorenzo Miele, Luca Lomazzi
 
-Use: you can modify this function to create a database starting from a folder from 
-open guided waves
+Usage: You can modify this function to create a database starting from a 
+folder from Open Guided Waves. (the README will explain the procedure)
+
+Requirements:
+- numpy
+- h5py
+
+Script Execution:
+1. Define the path to the data folder if not as default raw (DATA_PATH).
+2. Define the path for the output database file if not as default interim (OUTPUT_PATH).
+3. Execute the script.
+
+The script will print information about the files being processed and create a 
+database.pkl file in the specified output path.
+
+Note: The execution of the pickle load might take a few minutes since the 
+dataset is very large.
 """
 import os
 import re
@@ -28,7 +43,13 @@ def create_database(dir_path):
 
     Returns:
         database: list of dictionaries with name, frequency, temperature and samples
+    
+    Raises:
+        FileNotFoundError: If the specified data folder does not exist.
+    
     """
+    if not os.path.exists(input_path):
+        raise FileNotFoundError(f"The specified data folder does not exist: {input_path}")
     database = []
     counter = 0
     freq = np.arange(40, 261, 20) # The frequency used are 40, 60, 80 ,..., 260
@@ -74,6 +95,8 @@ def create_dict (file_arg, frequency, counter):
         }
     return dict_sample
 
+# START: data/raw
+# END:   data/interim
 file_Path = os.path.abspath(__file__)
 DATA_PATH = r"..\..\..\data\raw\OGW_CFRP_Temperature_udam"
 OUTPUT_PATH = r"..\..\..\data\interim\database.pkl"

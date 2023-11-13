@@ -42,6 +42,8 @@ import os
 import pickle
 import numpy as np
 
+# START: data/interim
+# END:   data/processed
 file_Path = os.path.abspath(__file__)
 DATA_PATH = r"..\..\..\data\interim\database.pkl"
 OUTPUT_PATH = r"..\..\..\data\processed\processed_data.pkl"
@@ -117,7 +119,8 @@ output_data = {
     'signals': signals,
     'data_dim': data_dim,
     'length_catch': length_catch,
-    'temperature_number': temperature_number
+    'temperature_number': temperature_number,
+    't': t
 }
 
 print("Output Path:", output_path)

@@ -147,6 +147,35 @@ class VAE(keras.Model):
             "kl_loss": self.kl_loss_tracker.result(),
         }
 
+# START: data/processed
+# END:   model
+#          - weights.h5
+#          - my_encoder.keras
+#          - my_decoder.keras
+
+file_Path = os.path.abspath(__file__)
+DATA_PATH = r"..\..\..\data\processed\processed_data.pkl"
+OUTPUT_PATH_WEIGHTS = r"..\..\..\models\weights\standard_weights.h5"
+OUTPUT_PATH_MODEL_DATA = r"..\..\..\models\model_data\standard_model_data.pkl"
+FIG_PATH = r"..\..\..\reports\figures"
+
+input_path = os.path.abspath(os.path.join(file_Path, DATA_PATH))
+weights_path = os.path.abspath(os.path.join(file_Path, OUTPUT_PATH_WEIGHTS))
+model_data_path = os.path.abspath(os.path.join(file_Path, OUTPUT_PATH_MODEL_DATA))
+
+if not os.path.exists(input_path):
+        raise FileNotFoundError(f"The specified data folder does not exist: {input_path}")
+
+# Open the database generated from the build_dataset script
+with open(input_path, 'rb') as file:
+    processed = pickle.load(file)
+
+signals = processed['signals']
+data_dim = processed['data_dim']
+length_catch = processed['length_catch']
+temperature_number = processed['temperature_number']
+t = processed["t"]
+
 DURATION = 0.00131 # total duration of the signal
 
 # Selecting the hyperparameters
@@ -233,12 +262,14 @@ z_T = [temp for temp in temperature_number]
 # Plotting the latent space in 2D and saving the png
 learning_rate_str = str(LEARNING_RATE).replace('.', '')
 labels = [(int(temp) - int(temp) % 2) for temp in z_T]
+fig1_name = f'\\2D_B{BATCH_SIZE}_LR{learning_rate_str}.png'
+fig1_path = os.path.abspath(os.path.join(file_Path, FIG_PATH + fig1_name))
 plt.figure(figsize=(12, 10))
 plt.scatter(z_x, z_y, c=labels)
 plt.colorbar()
 plt.xlabel("z[0]")
 plt.ylabel("z[1]")
-plt.savefig(f'2D_B{BATCH_SIZE}_LR{learning_rate_str}.png', dpi=300)
+plt.savefig(fig1_path, dpi=300)
 plt.show()
 
 # Plotting the latent space in 3D
@@ -250,33 +281,21 @@ ax.set_ylabel('y')
 ax.set_zlabel('Temperature')
 plt.show()
 
-fig.savefig(f'3D_B{BATCH_SIZE}_LR{learning_rate_str}.png', dpi=300)
+fig2_name = f'\\3D_B{BATCH_SIZE}_LR{learning_rate_str}.png'
+fig2_path = os.path.abspath(os.path.join(file_Path, FIG_PATH + fig2_name))
+fig.savefig(fig2_path, dpi=300)
 
 ## Save the model if the input is linear and perform a linear regression 
 ans = input("Is the latent space linear? (y/n): ")
 if ans.lower() == 'y':
-
-    # Check if the model already exist
-    if os.path.exists("vae.weights.h5"):
-        ans = input("The model vae.weights already exist in your folder, want to overwrite it (y/n): ")
-        if ans.lower() =='y':
-            os.remove("vae.weights.h5")
-    if os.path.exists("my_encoder.keras"):
-        ans = input("The model my_encoder already exist in your folder, want to overwrite it (y/n): ")
-        if ans.lower() =='y':
-            os.remove("my_encoder.keras")
-    if os.path.exists("my_decoder.keras"):
-        ans = input("The model my_decoder already exist in your folder, want to overwrite it (y/n): ")
-        if ans.lower() =='y':
-            os.remove("my_decoder.keras")
-
-    ### GUARDARE PER METTERE NEGLI IF
-    vae.save_weights("vae.weights.h5")
-    vae.encoder.save('my_encoder.keras')
-    vae.decoder.save('my_decoder.keras')
     
-    # Saving the data for later
-    file_name = 'z_data.pkl'
+    # Check if the model already exist
+    if os.path.exists(weights_path):
+        ans = input("The model vae.weights already exist, want to overwrite it (y/n): ")
+        if ans.lower() =='y':
+            os.remove(weights_path)
+
+    vae.save_weights(weights_path)
 
     # dictionary with the requested data
     data_to_save = {
@@ -293,9 +312,9 @@ if ans.lower() == 'y':
         'LEARNING_RATE':LEARNING_RATE
     }
 
-    if os.path.exists(file_name):
-        os.remove(file_name)
+    if os.path.exists(model_data_path):
+        os.remove(model_data_path)
 
     # Save the dictionary in another file
-    with open(file_name, 'wb') as file:
-        pickle.dump(data_to_save, file) 
+    with open(model_data_path, 'wb') as file:
+        pickle.dump(data_to_save, file)
