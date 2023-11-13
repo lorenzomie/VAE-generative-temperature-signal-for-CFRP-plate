@@ -42,9 +42,17 @@ import os
 import pickle
 import numpy as np
 
-input_filepath = '../../data/interim/database.pkl'
+file_Path = os.path.abspath(__file__)
+DATA_PATH = r"..\..\..\data\interim\database.pkl"
+OUTPUT_PATH = r"..\..\..\data\processed\processed_data.pkl"
+input_path = os.path.abspath(os.path.join(file_Path, DATA_PATH))
+output_path = os.path.abspath(os.path.join(file_Path, OUTPUT_PATH))
+
+if not os.path.exists(input_path):
+        raise FileNotFoundError(f"The specified data folder does not exist: {input_path}")
+
 # Open the database generated from the build_dataset script
-with open(input_filepath, 'rb') as file:
+with open(input_path, 'rb') as file:
     database = pickle.load(file)
 
 # Only to verify if the database is working
@@ -105,7 +113,6 @@ for matrix in signals_tot:
     single_signal = matrix[0, :]
     signals.append(single_signal)
 
-output_pickle_file = '../../data/processed/output_data.pkl'
 output_data = {
     'signals': signals,
     'data_dim': data_dim,
@@ -113,8 +120,16 @@ output_data = {
     'temperature_number': temperature_number
 }
 
+print("Output Path:", output_path)
+
+if os.path.exists(output_path):
+    print("The file already exist. Removing...")
+    os.remove(output_path)
+
+print("Creating the file processed_data.pkl")
+
 # Saving the data into the pickle file
-with open(output_pickle_file, 'wb') as output_file:
+with open(output_path, 'wb') as output_file:
     pickle.dump(output_data, output_file)
 
-print(f'Saved {output_pickle_file}')
+print(f'Saved {output_path}')
