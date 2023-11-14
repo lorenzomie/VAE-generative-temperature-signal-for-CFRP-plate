@@ -92,10 +92,10 @@ class VAE(keras.Model):
 
     def build_encoder(self, input_shape, latent_dim):
         encoder_inputs = keras.Input(shape = input_shape)
-        x = layers.Dense(128, activation = 'relu')(encoder_inputs)
-        x = layers.Dense(64, activation = 'relu')(x)
+        x = layers.Dense(128, activation = 'silu')(encoder_inputs)
+        x = layers.Dense(64, activation = 'silu')(x)
         # x = layers.Flatten()(x)
-        x = layers.Dense(16, activation="relu")(x)
+        x = layers.Dense(16, activation="silu")(x)
         z_mean = layers.Dense(latent_dim, name = "z_mean")(x)
         z_log_var = layers.Dense(latent_dim, name = "z_log_var")(x)
         z = self.sampling([z_mean, z_log_var])
@@ -112,10 +112,10 @@ class VAE(keras.Model):
     def build_decoder(self, input_shape):
         # shape accepts a tuple of dimension
         decoder_inputs = keras.Input(shape = (self.latent_dim,))
-        x = layers.Dense(16, activation = "relu")(decoder_inputs)
-        x = layers.Dense(64, activation="relu")(x)
+        x = layers.Dense(16, activation = "silu")(decoder_inputs)
+        x = layers.Dense(64, activation="silu")(x)
         # x = layers.Reshape((input_shape, 64))(x)
-        x = layers.Dense(128, activation = "relu")(x)
+        x = layers.Dense(128, activation = "silu")(x)
         decoder_outputs = layers.Dense(input_shape, activation = "sigmoid")(x)
         decoder = keras.Model(decoder_inputs, decoder_outputs, name = "DEC")
         return decoder
