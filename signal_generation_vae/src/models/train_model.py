@@ -147,75 +147,132 @@ class VAE(keras.Model):
             "kl_loss": self.kl_loss_tracker.result(),
         }
 
+def load_processed_data(file_Path, DATA_PATH):
+    input_path = os.path.abspath(os.path.join(file_Path, DATA_PATH))
+
+    if not os.path.exists(input_path):
+        raise FileNotFoundError(f"The specified data folder does not exist: {input_path}")
+
+    # Open the database generated from the build_dataset script
+    with open(input_path, 'rb') as file:
+        processed = pickle.load(file)
+
+    signals = processed['signals']
+    data_dim = processed['data_dim']
+    length_catch = processed['length_catch']
+    temperature_number = processed['temperature_number']
+    t = processed["t"]
+
+    return signals, data_dim, length_catch, temperature_number, t
+
+def normalize(signals):
+    """
+    Normalize a list of signals to the [0, 1] interval.
+
+    Args:
+        signals (list): List of input signals.
+
+    Returns:
+        tf.Tensor: Normalized signals.
+    """
+    tensor_signals = tf.constant(signals, dtype=tf.float32)
+    
+    min_input = tf.reduce_min(tensor_signals)
+    max_input = tf.reduce_max(tensor_signals)
+    interval = tf.subtract(max_input, min_input)
+    normalized_signals = tf.divide(tf.subtract(tensor_signals, min_input), interval)
+    
+    print("\nMaximum of the inputs:", max_input.numpy())
+    print("Minimum of the inputs:", min_input.numpy())
+    print("\n")
+    
+    return normalized_signals
+
+def display_model_options():
+    print("\033[91mSELECT THE MODEL:\033[0m\n")
+    print("1. Standard Model")
+    print("2. Band Model")
+    print("3. Sparse Model")
+
+def get_model_data(model_type, normalized_signals, data_dim):
+    if model_type == "1":
+        print("You selected the Standard Model.")
+        model_name = 'STANDARD'
+        model_signal = normalized_signals
+        # data_dim will remain the same
+        
+    elif model_type == "2":
+        print("You selected the Band Model.")
+        model_name = 'BAND'
+        ## Creating the Dataset using only a band of temperature for a different scope
+        # use MIN_TEMP and MAX_TEMP to modify the band
+        MIN_TEMP = 30
+        MAX_TEMP = 50
+        counter = 0
+        indexes = []
+        band_temperature = []
+
+        for temp in temperature_number:
+            if temp > MIN_TEMP and temp < MAX_TEMP:
+                band_temperature.append(temp)
+                indexes.append(counter)
+            counter += 1
+                
+        model_signal = tf.gather(normalized_signals, tf.constant(indexes))
+        data_dim = len(indexes)
+        
+    elif model_type == "3":
+        print("You selected the Sparse Model.")
+        model_name = 'SPARSE'
+    else:
+        print("Invalid choice. Please enter a valid number (1, 2, or 3).")
+    return model_signal, data_dim, model_name
+
+def get_user_choice():
+    """
+    SELECT THE MODEL DATA:
+    STANDARD MODEL: It will run the training with all the temperature spectrum [20:60]
+    BAND MODEL: It will run the training with a band between MIN_TEMP and MAX_TEMP of temperature
+    SPARSE MODEL: It will run the training with sparse band of temperature [20:22, 28:30, 45:47, ...]
+    """
+    return input("Enter the number corresponding to the desired model (1, 2, or 3): ")
+
+### INPUT and OUTPUT path ###
 # START: data/processed
-# END:   model
-#          - weights.h5
-#          - my_encoder.keras
-#          - my_decoder.keras
+# END:   models/weights
+#          - weights_NAME.h5
+#        models/model_data
+#          - model_data_NAME.pkl
 
 file_Path = os.path.abspath(__file__)
 DATA_PATH = r"..\..\..\data\processed\processed_data.pkl"
-OUTPUT_PATH_WEIGHTS = r"..\..\..\models\weights\standard_weights.h5"
-OUTPUT_PATH_MODEL_DATA = r"..\..\..\models\model_data\standard_model_data.pkl"
+OUTPUT_PATH_WEIGHTS = r"..\..\..\models\weights\weight_"
+OUTPUT_PATH_MODEL_DATA = r"..\..\..\models\model_data\model_data_"
 FIG_PATH = r"..\..\..\reports\figures"
 
-input_path = os.path.abspath(os.path.join(file_Path, DATA_PATH))
-weights_path = os.path.abspath(os.path.join(file_Path, OUTPUT_PATH_WEIGHTS))
-model_data_path = os.path.abspath(os.path.join(file_Path, OUTPUT_PATH_MODEL_DATA))
+signals, data_dim, length_catch, temperature_number, t = load_processed_data(file_Path, DATA_PATH)
 
-if not os.path.exists(input_path):
-        raise FileNotFoundError(f"The specified data folder does not exist: {input_path}")
-
-# Open the database generated from the build_dataset script
-with open(input_path, 'rb') as file:
-    processed = pickle.load(file)
-
-signals = processed['signals']
-data_dim = processed['data_dim']
-length_catch = processed['length_catch']
-temperature_number = processed['temperature_number']
-t = processed["t"]
+### MODELS CONSTANTS AND HYPERPARAMETERS ###
+# Select the hyperparameters, the figures will have the Learning Rate and
+# the Batch_size in their name when saved
 
 DURATION = 0.00131 # total duration of the signal
 
-# Selecting the hyperparameters
 NUM_EPOCHS = 100
 BATCH_SIZE = 20
 KL_WEIGHT = 0.5
 LEARNING_RATE = 0.005
 
-# Rescaling is now performed to normalize the input in [0,1] interval
-tensor_signals = tf.constant(signals, dtype=tf.float32)
-
-min_input = tf.reduce_min(tensor_signals)
-max_input = tf.reduce_max(tensor_signals)
-interval = tf.subtract(max_input, min_input)
-normalized_signals = tf.divide(tf.subtract(tensor_signals, min_input), interval)
-print("\nMaximum of the inputs:", max_input.numpy())
-print("Minimum of the inputs:", min_input.numpy())
-
-# Debugging only
-min_res= tf.reduce_min(normalized_signals)
-max_res = tf.reduce_max(normalized_signals)
-print("Maximum of the rescaled inputs:", max_res.numpy())
-print("Minimum of the rescaled inputs:", min_res.numpy())
+normalized_signals = normalize(signals)
+display_model_options()
+model_type = get_user_choice()
+model_signal, data_dim, model_name = get_model_data(model_type, normalized_signals, data_dim)
 
 # The Test and Validation dataset aren't required, the metric is defined in the next script
 print("The length of the training dataset is:", data_dim)
-dataset = tf.data.Dataset.from_tensor_slices(normalized_signals)
+dataset = tf.data.Dataset.from_tensor_slices(model_signal)
 
-# Dividing the dataset into train and test
 train_dataset = (dataset.shuffle(data_dim).batch(BATCH_SIZE))
-
-# # Debugging only
-# print("First 5 elements of the train set")
-# for sample in train_dataset.take(5):
-#     print("Example:", sample.numpy())
-
-# # Qui puoi chiedere anche il label dopo
-# print("First 5 element of the test set:")
-# for sample in test_dataset.take(5):
-#     print("Example:", sample.numpy())
 
 ## Creation of the VAE
 vae = VAE(length_catch, KL_WEIGHT, LEARNING_RATE)
@@ -262,7 +319,7 @@ z_T = [temp for temp in temperature_number]
 # Plotting the latent space in 2D and saving the png
 learning_rate_str = str(LEARNING_RATE).replace('.', '')
 labels = [(int(temp) - int(temp) % 2) for temp in z_T]
-fig1_name = f'\\2D_B{BATCH_SIZE}_LR{learning_rate_str}.png'
+fig1_name = f'\\2D_B{BATCH_SIZE}_LR{learning_rate_str}_{model_name}.png'
 fig1_path = os.path.abspath(os.path.join(file_Path, FIG_PATH + fig1_name))
 plt.figure(figsize=(12, 10))
 plt.scatter(z_x, z_y, c=labels)
@@ -281,7 +338,7 @@ ax.set_ylabel('y')
 ax.set_zlabel('Temperature')
 plt.show()
 
-fig2_name = f'\\3D_B{BATCH_SIZE}_LR{learning_rate_str}.png'
+fig2_name = f'\\3D_B{BATCH_SIZE}_LR{learning_rate_str}_{model_name}.png'
 fig2_path = os.path.abspath(os.path.join(file_Path, FIG_PATH + fig2_name))
 fig.savefig(fig2_path, dpi=300)
 
@@ -289,6 +346,11 @@ fig.savefig(fig2_path, dpi=300)
 ans = input("Is the latent space linear? (y/n): ")
 if ans.lower() == 'y':
     
+    output_path = OUTPUT_PATH_WEIGHTS + model_name +'.h5'
+    model_output_path = OUTPUT_PATH_MODEL_DATA + model_name + '.pkl'
+    weights_path = os.path.abspath(os.path.join(file_Path, output_path))
+    model_data_path = os.path.abspath(os.path.join(file_Path, model_output_path))
+
     # Check if the model already exist
     if os.path.exists(weights_path):
         ans = input("The model vae.weights already exist, want to overwrite it (y/n): ")
