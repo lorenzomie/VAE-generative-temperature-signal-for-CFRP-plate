@@ -204,6 +204,7 @@ def get_model_data(model_type, normalized_signals, data_dim):
     elif model_type == "2":
         print("You selected the Band Model.")
         model_name = 'BAND'
+        
         ## Creating the Dataset using only a band of temperature for a different scope
         # use MIN_TEMP and MAX_TEMP to modify the band
         MIN_TEMP = 30
@@ -237,128 +238,75 @@ def get_user_choice():
     """
     return input("Enter the number corresponding to the desired model (1, 2, or 3): ")
 
-### INPUT and OUTPUT path ###
-# START: data/processed
-# END:   models/weights
-#          - weights_NAME.h5
-#        models/model_data
-#          - model_data_NAME.pkl
-
-file_Path = os.path.abspath(__file__)
-DATA_PATH = r"..\..\..\data\processed\processed_data.pkl"
-OUTPUT_PATH_WEIGHTS = r"..\..\..\models\weights\weight_"
-OUTPUT_PATH_MODEL_DATA = r"..\..\..\models\model_data\model_data_"
-FIG_PATH = r"..\..\..\reports\figures"
-
-signals, data_dim, length_catch, temperature_number, t = load_processed_data(file_Path, DATA_PATH)
-
-### MODELS CONSTANTS AND HYPERPARAMETERS ###
-# Select the hyperparameters, the figures will have the Learning Rate and
-# the Batch_size in their name when saved
-
-DURATION = 0.00131 # total duration of the signal
-
-NUM_EPOCHS = 100
-BATCH_SIZE = 20
-KL_WEIGHT = 0.5
-LEARNING_RATE = 0.005
-
-normalized_signals = normalize(signals)
-display_model_options()
-model_type = get_user_choice()
-model_signal, data_dim, model_name = get_model_data(model_type, normalized_signals, data_dim)
-
-# The Test and Validation dataset aren't required, the metric is defined in the next script
-print("The length of the training dataset is:", data_dim)
-dataset = tf.data.Dataset.from_tensor_slices(model_signal)
-
-train_dataset = (dataset.shuffle(data_dim).batch(BATCH_SIZE))
-
-## Creation of the VAE
-vae = VAE(length_catch, KL_WEIGHT, LEARNING_RATE)
-
-print("Encoder Summary:")
-vae.encoder.summary()
-print("\nDecoder Summary:")
-vae.decoder.summary()
-
-vae.compile(optimizer=keras.optimizers.Adam(learning_rate = LEARNING_RATE))
-vae.fit(train_dataset, epochs=NUM_EPOCHS, batch_size=BATCH_SIZE)
-
-# summary of the input 
-print(vae.layers[0].input)
-# Creating the latent vector and reconstructing the input
-_, _, z = vae.encoder(normalized_signals[0:1])
-x_rec = vae.decoder(z)
-plt.plot(t, normalized_signals[0,:], label = "Input signal")
-plt.plot(t, x_rec[0,:], label = "Reconstructed signal")
-plt.xlabel('t')
-plt.ylabel('signal')
-plt.legend()
-plt.title('Input signal')
-plt.show()
-
-# Creating the 3D graph plotting with temperature labels
-z_x = [] # first variable of z
-z_y = [] # second variable of z
-z_T = [] # Temperature relative of z
-enc_dec_signals = [] # list of vectors
-var_enc = [] # list of variance of the encoder
-
-for i in range(normalized_signals.shape[0]):
-    # the input require an interval of a single value
-    z_mean, z_log_var, z = vae.encoder(normalized_signals[i:i+1])
-    x_rec = vae.decoder(z_mean)
-    z_x.append(z_mean[0,0])
-    z_y.append(z_mean[0,1])
-    enc_dec_signals.append(x_rec[0,:])
-    var_enc.append(z_log_var)
-
-z_T = [temp for temp in temperature_number]
+def plot_signal_example(t, normalized_signals, x_rec):
     
-# Plotting the latent space in 2D and saving the png
-learning_rate_str = str(LEARNING_RATE).replace('.', '')
-labels = [(int(temp) - int(temp) % 2) for temp in z_T]
-fig1_name = f'\\2D_B{BATCH_SIZE}_LR{learning_rate_str}_{model_name}.png'
-fig1_path = os.path.abspath(os.path.join(file_Path, FIG_PATH + fig1_name))
-plt.figure(figsize=(12, 10))
-plt.scatter(z_x, z_y, c=labels)
-plt.colorbar()
-plt.xlabel("z[0]")
-plt.ylabel("z[1]")
-plt.savefig(fig1_path, dpi=300)
-plt.show()
+    plt.plot(t, normalized_signals[0,:], label = "Input signal")
+    plt.plot(t, x_rec[0,:], label = "Reconstructed signal")
+    plt.xlabel('t')
+    plt.ylabel('signal')
+    plt.legend()
+    plt.title('Input signal')
+    plt.show()
 
-# Plotting the latent space in 3D
-fig = plt.figure()
-ax = fig.add_subplot(111, projection='3d')
-ax.scatter(z_x, z_y, z_T, c=labels, marker='o')
-ax.set_xlabel('x')
-ax.set_ylabel('y')
-ax.set_zlabel('Temperature')
-plt.show()
+def init_latent_space(normalized_signal, vae):
+    z_x = [] # first variable of z
+    z_y = [] # second variable of z
+    z_T = [] # Temperature relative of z
+    enc_dec_signals = [] # list of vectors
+    var_enc = [] # list of variance of the encoder
 
-fig2_name = f'\\3D_B{BATCH_SIZE}_LR{learning_rate_str}_{model_name}.png'
-fig2_path = os.path.abspath(os.path.join(file_Path, FIG_PATH + fig2_name))
-fig.savefig(fig2_path, dpi=300)
+    for i in range(normalized_signals.shape[0]):
+        # the input require an interval of a single value
+        z_mean, z_log_var, z = vae.encoder(normalized_signals[i:i+1])
+        x_rec = vae.decoder(z_mean)
+        z_x.append(z_mean[0,0])
+        z_y.append(z_mean[0,1])
+        enc_dec_signals.append(x_rec[0,:])
+        var_enc.append(z_log_var)
 
-## Save the model if the input is linear and perform a linear regression 
-ans = input("Is the latent space linear? (y/n): ")
-if ans.lower() == 'y':
-    
-    output_path = OUTPUT_PATH_WEIGHTS + model_name +'.h5'
-    model_output_path = OUTPUT_PATH_MODEL_DATA + model_name + '.pkl'
-    weights_path = os.path.abspath(os.path.join(file_Path, output_path))
-    model_data_path = os.path.abspath(os.path.join(file_Path, model_output_path))
+    z_T = [temp for temp in temperature_number]
+    return z_x, z_y, z_T, enc_dec_signals, var_enc
 
-    # Check if the model already exist
+def plot_and_save_latent_space_2D(z_x, z_y, z_T, learning_rate, file_Path):
+    learning_rate_str = str(learning_rate).replace('.', '')
+    labels = [(int(temp) - int(temp) % 2) for temp in z_T]
+    fig1_name = f'\\2D_B{BATCH_SIZE}_LR{learning_rate_str}_{model_name}.png'
+    save_path = os.path.abspath(os.path.join(file_Path, FIG_PATH + fig1_name))
+    plt.figure(figsize=(12, 10))
+    plt.scatter(z_x, z_y, c=labels)
+    plt.colorbar()
+    plt.xlabel("z[0]")
+    plt.ylabel("z[1]")
+    plt.savefig(save_path, dpi=300)
+    plt.show()
+
+def plot_and_save_latent_space_3D(z_x, z_y, z_T, learning_rate, file_Path):
+    learning_rate_str = str(learning_rate).replace('.', '')
+    labels = [(int(temp) - int(temp) % 2) for temp in z_T]
+    fig = plt.figure()
+    ax = fig.add_subplot(111, projection='3d')
+    ax.scatter(z_x, z_y, z_T, c=labels, marker='o')
+    ax.set_xlabel('x')
+    ax.set_ylabel('y')
+    ax.set_zlabel('Temperature')
+    plt.show()
+
+    fig2_name = f'\\3D_B{BATCH_SIZE}_LR{learning_rate_str}_{model_name}.png'
+    fig2_path = os.path.abspath(os.path.join(file_Path, FIG_PATH + fig2_name))
+    fig.savefig(fig2_path, dpi=300)
+
+def save_model(weights_path):
     if os.path.exists(weights_path):
         ans = input("The model vae.weights already exist, want to overwrite it (y/n): ")
         if ans.lower() =='y':
             os.remove(weights_path)
 
     vae.save_weights(weights_path)
-
+    print("weights saved.")
+    
+def save_model_data(z_x, z_y, z_T, t, normalized_signals, model_signal, length_catch, KL_WEIGHT, \
+    enc_dec_signals, var_enc, BATCH_SIZE, LEARNING_RATE, temperature_number, band_temperature, \
+    sparse_temperature, model_data_path):
     # dictionary with the requested data
     data_to_save = {
         'z_x': z_x,
@@ -366,17 +314,111 @@ if ans.lower() == 'y':
         'z_T': z_T,
         't': t,
         'normalized_signals': normalized_signals,
+        'model_signal': model_signal,
         'length_catch': length_catch,
         'kl weight': KL_WEIGHT,
         'enc_dec_signals': enc_dec_signals,
         'log variance': var_enc,
         'BATCH_SIZE':BATCH_SIZE,
-        'LEARNING_RATE':LEARNING_RATE
+        'LEARNING_RATE':LEARNING_RATE,
+        'Temperature': temperature_number,
+        'Band temperature': band_temperature,
+        'Sparse temperature': sparse_temperature
     }
 
     if os.path.exists(model_data_path):
-        os.remove(model_data_path)
+        ans = input("The model vae.weights already exist, want to overwrite it (y/n): ")
+        if ans.lower() =='y':
+            os.remove(model_data_path)
+            # Save the dictionary in models/model_data
+            with open(model_data_path, 'wb') as file:
+                pickle.dump(data_to_save, file)
+            print("Model data saved.")
+    else:
+        with open(model_data_path, 'wb') as file:
+            pickle.dump(data_to_save, file)
+        print("Model data saved.")
+    
+if __name__ == "__main__":
 
-    # Save the dictionary in another file
-    with open(model_data_path, 'wb') as file:
-        pickle.dump(data_to_save, file)
+    ### INPUT and OUTPUT path ###
+    # START: data/processed
+    # END:   models/weights
+    #          - weights_NAME.h5
+    #        models/model_data
+    #          - model_data_NAME.pkl
+
+    file_Path = os.path.abspath(__file__)
+    DATA_PATH = r"..\..\..\data\processed\processed_data.pkl"
+    OUTPUT_PATH_WEIGHTS = r"..\..\..\models\weights\weight_"
+    OUTPUT_PATH_MODEL_DATA = r"..\..\..\models\model_data\model_data_"
+    FIG_PATH = r"..\..\..\reports\figures"
+
+    signals, data_dim, length_catch, temperature_number, t = load_processed_data(file_Path, DATA_PATH)
+
+    ### MODELS CONSTANTS AND HYPERPARAMETERS ###
+    # Select the hyperparameters, the figures will have the Learning Rate and
+    # the Batch_size in their name when saved
+
+    DURATION = 0.00131 # total duration of the signal
+
+    NUM_EPOCHS = 100
+    BATCH_SIZE = 20
+    KL_WEIGHT = 0.5
+    LEARNING_RATE = 0.005
+    band_temperature = []
+    sparse_temperature = []
+    
+    normalized_signals = normalize(signals)
+    display_model_options()
+    model_type = get_user_choice()
+    model_signal, data_dim, model_name = get_model_data(model_type, normalized_signals, data_dim)
+
+    # The Test and Validation dataset aren't required, the metric is defined in the next script
+    print("The length of the training dataset is:", data_dim)
+    dataset = tf.data.Dataset.from_tensor_slices(model_signal)
+
+    train_dataset = (dataset.shuffle(data_dim).batch(BATCH_SIZE))
+
+    ## Creation of the VAE
+    vae = VAE(length_catch, KL_WEIGHT, LEARNING_RATE)
+
+    print("Encoder Summary:")
+    vae.encoder.summary()
+    print("\nDecoder Summary:")
+    vae.decoder.summary()
+
+    vae.compile(optimizer=keras.optimizers.Adam(learning_rate = LEARNING_RATE))
+    vae.fit(train_dataset, epochs=NUM_EPOCHS, batch_size=BATCH_SIZE)
+
+    # summary of the input 
+    print(vae.layers[0].input)
+
+    # Creating the latent vector and reconstructing the input
+    _, _, z = vae.encoder(normalized_signals[0:1])
+    x_rec = vae.decoder(z)
+    plot_signal_example(t, normalized_signals, x_rec)
+
+    # Creating the 3D graph plotting with temperature labels
+    z_x, z_y, z_T, enc_dec_signals, var_enc = init_latent_space(normalized_signals, vae)
+        
+    # Plotting the latent space in 2D and saving the png
+    plot_and_save_latent_space_2D(z_x, z_y, z_T, LEARNING_RATE, file_Path)
+    
+    # Plotting the latent space in 3D
+    plot_and_save_latent_space_3D(z_x, z_y, z_T, LEARNING_RATE, file_Path)
+
+    ## Save the model if the input is linear and perform a linear regression 
+    ans = input("Is the latent space linear? (y/n): ")
+    if ans.lower() == 'y':
+        
+        output_path = OUTPUT_PATH_WEIGHTS + model_name +'.h5'
+        model_output_path = OUTPUT_PATH_MODEL_DATA + model_name + '.pkl'
+        weights_path = os.path.abspath(os.path.join(file_Path, output_path))
+        model_data_path = os.path.abspath(os.path.join(file_Path, model_output_path))
+
+        save_model(weights_path)
+        
+        save_model_data(z_x, z_y, z_T, t, normalized_signals, model_signal, length_catch, KL_WEIGHT, \
+        enc_dec_signals, var_enc, BATCH_SIZE, LEARNING_RATE, temperature_number, band_temperature, \
+        sparse_temperature, model_data_path)
