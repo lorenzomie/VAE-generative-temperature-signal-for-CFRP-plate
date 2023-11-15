@@ -194,12 +194,62 @@ def display_model_options():
     print("2. Band Model")
     print("3. Sparse Model")
 
+def get_band_data(temp_min, temp_max, temperature_number, normalized_signals):
+    counter = 0
+    indexes = []
+    band_temperature = []
+
+    for temp in temperature_number:
+        if temp > temp_min and temp < temp_max:
+            band_temperature.append(temp)
+            indexes.append(counter)
+        counter += 1
+            
+    model_signal = tf.gather(normalized_signals, tf.constant(indexes))
+    data_dim = len(indexes)
+    return band_temperature, model_signal, data_dim
+
+def get_sparse_data(temp_int, cluster_int, temperature_number, normalized_signals, start_temp):
+    
+    if temp_int >= cluster_int:
+        raise ValueError("You can't have a inter-cluster distance greater \
+            than a cluster range")
+    
+    sparse_temperature = []
+    indexes = []
+    start_intervals = list(range(start_temp, 61, cluster_int))
+    new_intervals = []
+    
+    for i in range(len(start_intervals)):
+        end_temp = start_intervals[i] + temp_int
+        if end_temp >= 60:
+            end_temp = 60
+        new_intervals.append(start_intervals[i]) 
+        new_intervals.append(end_temp)
+        
+
+    for i in range(0, len(new_intervals), 2):
+        counter = 0
+        for temp in temperature_number:
+            if temp > new_intervals[i] and temp < new_intervals[i+1]:
+                sparse_temperature.append(temp)
+                indexes.append(counter)
+            counter += 1
+    
+    model_signal = tf.gather(normalized_signals, tf.constant(indexes))
+    data_dim = len(indexes)
+    
+    return sparse_temperature, model_signal, data_dim
+            
+
 def get_model_data(model_type, normalized_signals, data_dim):
     if model_type == "1":
         print("You selected the Standard Model.")
         model_name = 'standard'
         model_signal = normalized_signals
         # data_dim will remain the same
+        band_temperature = []
+        sparse_temperature = []
         
     elif model_type == "2":
         print("You selected the Band Model.")
@@ -209,25 +259,22 @@ def get_model_data(model_type, normalized_signals, data_dim):
         # use MIN_TEMP and MAX_TEMP to modify the band
         MIN_TEMP = 30
         MAX_TEMP = 50
-        counter = 0
-        indexes = []
-        band_temperature = []
-
-        for temp in temperature_number:
-            if temp > MIN_TEMP and temp < MAX_TEMP:
-                band_temperature.append(temp)
-                indexes.append(counter)
-            counter += 1
-                
-        model_signal = tf.gather(normalized_signals, tf.constant(indexes))
-        data_dim = len(indexes)
+        band_temperature, model_signal, data_dim = get_band_data(MIN_TEMP, \
+            MAX_TEMP, temperature_number, normalized_signals)
+        sparse_temperature = []
         
     elif model_type == "3":
         print("You selected the Sparse Model.")
         model_name = 'sparse'
+        TEMP_INTERVAL = 2
+        CLUSTER_INTERVAL = 5
+        sparse_temperature, model_signal, data_dim = get_sparse_data(TEMP_INTERVAL, \
+            CLUSTER_INTERVAL, temperature_number, normalized_signals, start_temp = 20)
+        band_temperature = []
+        
     else:
         print("Invalid choice. Please enter a valid number (1, 2, or 3).")
-    return model_signal, data_dim, model_name
+    return model_signal, data_dim, model_name, band_temperature, sparse_temperature
 
 def get_user_choice():
     """
@@ -267,7 +314,7 @@ def init_latent_space(normalized_signal, vae):
     z_T = [temp for temp in temperature_number]
     return z_x, z_y, z_T, enc_dec_signals, var_enc
 
-def plot_and_save_latent_space_2D(z_x, z_y, z_T, learning_rate, file_Path):
+def plot_and_save_latent_space_2D(z_x, z_y, z_T, learning_rate, file_Path, model_name):
     learning_rate_str = str(learning_rate).replace('.', '')
     labels = [(int(temp) - int(temp) % 2) for temp in z_T]
     fig1_name = f'\\2D_B{BATCH_SIZE}_LR{learning_rate_str}_{model_name}.png'
@@ -280,7 +327,7 @@ def plot_and_save_latent_space_2D(z_x, z_y, z_T, learning_rate, file_Path):
     plt.savefig(save_path, dpi=300)
     plt.show()
 
-def plot_and_save_latent_space_3D(z_x, z_y, z_T, learning_rate, file_Path):
+def plot_and_save_latent_space_3D(z_x, z_y, z_T, learning_rate, file_Path, model_name):
     learning_rate_str = str(learning_rate).replace('.', '')
     labels = [(int(temp) - int(temp) % 2) for temp in z_T]
     fig = plt.figure()
@@ -297,7 +344,7 @@ def plot_and_save_latent_space_3D(z_x, z_y, z_T, learning_rate, file_Path):
 
 def save_model(weights_path):
     if os.path.exists(weights_path):
-        ans = input("The model vae.weights already exist, want to overwrite it (y/n): ")
+        ans = input("The model weights.vae already exist, want to overwrite it (y/n): ")
         if ans.lower() =='y':
             os.remove(weights_path)
 
@@ -327,7 +374,7 @@ def save_model_data(z_x, z_y, z_T, t, normalized_signals, model_signal, length_c
     }
 
     if os.path.exists(model_data_path):
-        ans = input("The model vae.weights already exist, want to overwrite it (y/n): ")
+        ans = input("The model data already exist, want to overwrite it (y/n): ")
         if ans.lower() =='y':
             os.remove(model_data_path)
             # Save the dictionary in models/model_data
@@ -343,10 +390,10 @@ if __name__ == "__main__":
 
     ### INPUT and OUTPUT path ###
     # START: data/processed
-    # END:   models/weights
-    #          - weights_NAME.h5
+    # END:   models/weights/name
+    #          - weights_name.h5
     #        models/model_data
-    #          - model_data_NAME.pkl
+    #          - model_data_name.pkl
 
     file_Path = os.path.abspath(__file__)
     DATA_PATH = r"..\..\..\data\processed\processed_data.pkl"
@@ -366,13 +413,12 @@ if __name__ == "__main__":
     BATCH_SIZE = 20
     KL_WEIGHT = 0.5
     LEARNING_RATE = 0.005
-    band_temperature = []
-    sparse_temperature = []
     
     normalized_signals = normalize(signals)
     display_model_options()
     model_type = get_user_choice()
-    model_signal, data_dim, model_name = get_model_data(model_type, normalized_signals, data_dim)
+    model_signal, data_dim, model_name, band_temperature, sparse_temperature = \
+        get_model_data(model_type, normalized_signals, data_dim)
 
     # The Test and Validation dataset aren't required, the metric is defined in the next script
     print("The length of the training dataset is:", data_dim)
@@ -397,16 +443,16 @@ if __name__ == "__main__":
     # Creating the latent vector and reconstructing the input
     _, _, z = vae.encoder(normalized_signals[0:1])
     x_rec = vae.decoder(z)
-    plot_signal_example(t, normalized_signals, x_rec)
+    # plot_signal_example(t, normalized_signals, x_rec)
 
     # Creating the 3D graph plotting with temperature labels
     z_x, z_y, z_T, enc_dec_signals, var_enc = init_latent_space(normalized_signals, vae)
         
     # Plotting the latent space in 2D and saving the png
-    plot_and_save_latent_space_2D(z_x, z_y, z_T, LEARNING_RATE, file_Path)
+    plot_and_save_latent_space_2D(z_x, z_y, z_T, LEARNING_RATE, file_Path, model_name)
     
     # Plotting the latent space in 3D
-    plot_and_save_latent_space_3D(z_x, z_y, z_T, LEARNING_RATE, file_Path)
+    plot_and_save_latent_space_3D(z_x, z_y, z_T, LEARNING_RATE, file_Path, model_name)
 
     ## Save the model if the input is linear and perform a linear regression 
     ans = input("Is the latent space linear? (y/n): ")
