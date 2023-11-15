@@ -197,13 +197,13 @@ def display_model_options():
 def get_model_data(model_type, normalized_signals, data_dim):
     if model_type == "1":
         print("You selected the Standard Model.")
-        model_name = 'STANDARD'
+        model_name = 'standard'
         model_signal = normalized_signals
         # data_dim will remain the same
         
     elif model_type == "2":
         print("You selected the Band Model.")
-        model_name = 'BAND'
+        model_name = 'band'
         
         ## Creating the Dataset using only a band of temperature for a different scope
         # use MIN_TEMP and MAX_TEMP to modify the band
@@ -224,7 +224,7 @@ def get_model_data(model_type, normalized_signals, data_dim):
         
     elif model_type == "3":
         print("You selected the Sparse Model.")
-        model_name = 'SPARSE'
+        model_name = 'sparse'
     else:
         print("Invalid choice. Please enter a valid number (1, 2, or 3).")
     return model_signal, data_dim, model_name
@@ -350,7 +350,7 @@ if __name__ == "__main__":
 
     file_Path = os.path.abspath(__file__)
     DATA_PATH = r"..\..\..\data\processed\processed_data.pkl"
-    OUTPUT_PATH_WEIGHTS = r"..\..\..\models\weights\weight_"
+    OUTPUT_PATH_WEIGHTS = r"..\..\..\models\weights"
     OUTPUT_PATH_MODEL_DATA = r"..\..\..\models\model_data\model_data_"
     FIG_PATH = r"..\..\..\reports\figures"
 
@@ -412,7 +412,7 @@ if __name__ == "__main__":
     ans = input("Is the latent space linear? (y/n): ")
     if ans.lower() == 'y':
         
-        output_path = OUTPUT_PATH_WEIGHTS + model_name +'.h5'
+        output_path = OUTPUT_PATH_WEIGHTS + '\\' + model_name +'\\vae.weights.h5'
         model_output_path = OUTPUT_PATH_MODEL_DATA + model_name + '.pkl'
         weights_path = os.path.abspath(os.path.join(file_Path, output_path))
         model_data_path = os.path.abspath(os.path.join(file_Path, model_output_path))

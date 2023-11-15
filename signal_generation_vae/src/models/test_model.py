@@ -16,7 +16,6 @@ This script assumes the existence of 'standard_model_data.pkl', this file will b
 once a model is present in the folder models. Train model will generate this file if
 the latent space is linear
 """
-import sys
 import os
 import pickle
 import numpy as np
@@ -100,6 +99,11 @@ class VAE(keras.Model):
         decoder = keras.Model(decoder_inputs, decoder_outputs, name = "DEC")
         return decoder
 
+    def call(self, inputs, training=None, mask=None):
+        _, _, z = self.encoder(inputs)
+        reconstructed = self.decoder(z)
+        return reconstructed
+    
     @property
     def metrics(self):
         return [
@@ -151,7 +155,7 @@ def get_data_from_dict(path):
         z_T = loaded_data['z_T']
         t = loaded_data['t']
         normalized_signals = loaded_data['normalized_signals']
-        model_signal = loaded_data['model signal']
+        model_signal = loaded_data['model_signal']
         length_catch = loaded_data['length_catch']
         KL_WEIGHT = loaded_data['kl weight']
         enc_dec_signals = loaded_data['enc_dec_signals']
@@ -175,19 +179,19 @@ def get_model(file_Path):
         model_type = get_user_choice()
         
         if model_type == '1':
-            OUTPUT_PATH_WEIGHTS = r"..\..\..\models\weights\weight_STANDARD.h5"
+            OUTPUT_PATH_WEIGHTS = r"..\..\..\models\weights\standard\vae.weights.h5"
             OUTPUT_PATH_MODEL_DATA = r"..\..\..\models\model_data\model_data_STANDARD.pkl"
             print("You selected the Standard Model.\n")
             model_name = 'Standard'
             
         elif model_type == '2':
-            OUTPUT_PATH_WEIGHTS = r"..\..\..\models\weights\weight_BAND.h5"
+            OUTPUT_PATH_WEIGHTS = r"..\..\..\models\weights\band\vae.weights.h5"
             OUTPUT_PATH_MODEL_DATA = r"..\..\..\models\model_data\model_data_BAND.pkl"
             print("You selected the Band Model.\n")
             model_name = 'Band'
             
         elif model_type == '3':
-            OUTPUT_PATH_WEIGHTS = r"..\..\..\models\weights\weight_SPARSE.h5"
+            OUTPUT_PATH_WEIGHTS = r"..\..\..\models\weights\sparse\vae.weights.h5"
             OUTPUT_PATH_MODEL_DATA = r"..\..\..\models\model_data\model_data_SPARSE.pkl"
             print("You selected the Sparse Model.\n")
             model_name = 'Sparse'
@@ -256,7 +260,8 @@ def plot_latent_space(z_x, z_y, z_T, line):
     colorbar.set_label('Temperature Intensity')
     plt.show()
 
-def plot_gen_signal(input_temperature):
+def plot_gen_signal(input_temperature, band_temperature, sparse_temperature, \
+                    line, z_T, normalized_signals, model_name, vae, t):
     """Generate a signal at a fixed Temperature
 
     Args:
@@ -270,11 +275,18 @@ def plot_gen_signal(input_temperature):
 
     idx = (np.abs(z_T - TEMPERATURE)).argmin()
     signal_val = normalized_signals[idx]
-    idx2 = (np.abs(np.array(band_temperature) - TEMPERATURE)).argmin()
-    training_temp_val = band_temperature[idx2]
-    training_signal_val = model_signal[idx2]
     print(f'The nearest known signal is at T: {z_T[idx]:.2f}°')
-    print(f'The nearest training signal is at T: {training_temp_val:.2f}°')
+    
+    if model_name == 'band':
+        idx2 = (np.abs(np.array(band_temperature) - TEMPERATURE)).argmin()
+        # Nearest signal in the training dataset (if you want to plot)
+        training_signal_val = model_signal[idx2]
+        training_temp_val = band_temperature[idx2]
+        print(f'The nearest training signal is at T: {training_temp_val:.2f}°')
+    elif model_name == 'sparse':
+        ## TO DO
+        print(f'The nearest training signal is at T: {training_temp_val:.2f}°')
+        pass
     
     latent_vec = tf.constant([z1, z2], dtype=tf.float32)
     latent_vec = tf.expand_dims(latent_vec, 0) # expand the input to have compatible dimensions
@@ -287,6 +299,11 @@ def plot_gen_signal(input_temperature):
     plt.title(f'Lamb Wave at {T_check:.2f}')
     plt.show()
 
+def error_metric(normalized_signal, vae):
+    recon_signals = vae(normalized_signal)
+    rmse = tf.sqrt(tf.reduce_mean(tf.square(normalized_signal - recon_signals)))
+    print(f"RMSE: {rmse:.6f}")
+    
 if __name__ == '__main__':
 
     file_Path = os.path.abspath(__file__)
@@ -298,6 +315,11 @@ if __name__ == '__main__':
 
     # creating the class
     vae = VAE(length_catch, KL_WEIGHT, LEARNING_RATE)
+    vae.encoder.summary()
+    vae.decoder.summary()
+    dummy_input = tf.zeros((1, length_catch))  # Debug
+    _ = vae(dummy_input)
+    
     vae.load_weights(weights_path)
 
     # Transform all the variables into numpy array and initializing the data
@@ -310,4 +332,6 @@ if __name__ == '__main__':
 
     # SELECT THE TEMPERATURE
     TEMPERATURE = 23.70 #[°]
-    plot_gen_signal(TEMPERATURE)
+    plot_gen_signal(TEMPERATURE, band_temperature, sparse_temperature, \
+                    line, z_T, normalized_signals, model_name, vae, t)
+    error_metric(normalized_signals, vae)
