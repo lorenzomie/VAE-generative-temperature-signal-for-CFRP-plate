@@ -261,7 +261,7 @@ def plot_latent_space(z_x, z_y, z_T, line):
     plt.show()
 
 def plot_gen_signal(input_temperature, band_temperature, sparse_temperature, \
-                    line, z_T, normalized_signals, model_name, vae, t):
+                    line, z_T, normalized_signals, model_name, vae, t, cut_idx):
     """Generate a signal at a fixed Temperature
 
     Args:
@@ -277,14 +277,17 @@ def plot_gen_signal(input_temperature, band_temperature, sparse_temperature, \
     signal_val = normalized_signals[idx]
     print(f'The nearest known signal is at T: {z_T[idx]:.2f}°')
     
-    if model_name == 'band':
+    if model_name == 'Band':
         idx2 = (np.abs(np.array(band_temperature) - TEMPERATURE)).argmin()
         # Nearest signal in the training dataset (if you want to plot)
         training_signal_val = model_signal[idx2]
         training_temp_val = band_temperature[idx2]
         print(f'The nearest training signal is at T: {training_temp_val:.2f}°')
-    elif model_name == 'sparse':
-        ## TO DO
+    elif model_name == 'Sparse':
+        idx2 = (np.abs(np.array(sparse_temperature) - TEMPERATURE)).argmin()
+        # Nearest signal in the training dataset (if you want to plot)
+        training_signal_val = model_signal[idx2]
+        training_temp_val = sparse_temperature[idx2]
         print(f'The nearest training signal is at T: {training_temp_val:.2f}°')
         pass
     
@@ -292,6 +295,7 @@ def plot_gen_signal(input_temperature, band_temperature, sparse_temperature, \
     latent_vec = tf.expand_dims(latent_vec, 0) # expand the input to have compatible dimensions
     recon_signal = vae.decoder(latent_vec)
     plt.plot(t, signal_val, label = f"Nearest signal in the dataset at T: {z_T[idx]:.2f}")
+    plt.axvline(x=t[cut_idx], color='red', linestyle='--', label='Cutting Line for metric')
     plt.plot(t, recon_signal[0], label = "Reconstructed signal")
     plt.xlabel('t [s]')
     plt.ylabel('signal')
@@ -299,9 +303,10 @@ def plot_gen_signal(input_temperature, band_temperature, sparse_temperature, \
     plt.title(f'Lamb Wave at {T_check:.2f}')
     plt.show()
 
-def error_metric(normalized_signal, vae):
+def error_metric(normalized_signal, vae, relevance_idx):
     recon_signals = vae(normalized_signal)
-    rmse = tf.sqrt(tf.reduce_mean(tf.square(normalized_signal - recon_signals)))
+    rmse = tf.sqrt(tf.reduce_mean(
+        tf.square(normalized_signal[:, :relevance_idx] - recon_signals[:, :relevance_idx])))
     print(f"RMSE: {rmse:.6f}")
     
 if __name__ == '__main__':
@@ -317,8 +322,6 @@ if __name__ == '__main__':
     vae = VAE(length_catch, KL_WEIGHT, LEARNING_RATE)
     vae.encoder.summary()
     vae.decoder.summary()
-    dummy_input = tf.zeros((1, length_catch))  # Debug
-    _ = vae(dummy_input)
     
     vae.load_weights(weights_path)
 
@@ -332,6 +335,7 @@ if __name__ == '__main__':
 
     # SELECT THE TEMPERATURE
     TEMPERATURE = 23.70 #[°]
+    MAX_IDX = 4500
     plot_gen_signal(TEMPERATURE, band_temperature, sparse_temperature, \
-                    line, z_T, normalized_signals, model_name, vae, t)
-    error_metric(normalized_signals, vae)
+                    line, z_T, normalized_signals, model_name, vae, t, MAX_IDX)
+    error_metric(normalized_signals, vae, MAX_IDX)
