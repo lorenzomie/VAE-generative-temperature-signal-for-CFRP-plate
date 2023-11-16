@@ -76,7 +76,11 @@ target/
 .ipynb_checkpoints/
 
 # exclude data from source control by default
-/data/
+/data/**/*.pkl
+/data/**/*.h5
+/data/**/*.mat
+/data/**/*.pdf
+/data/**/*.jpg
 
 # Mac OS-specific storage files
 .DS_Store
