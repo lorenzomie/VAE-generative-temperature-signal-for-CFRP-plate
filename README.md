@@ -19,8 +19,6 @@ Project Organization
     │   ├── processed      <- The final, canonical data sets for modeling.
     │   └── raw            <- The original, immutable data dump.
     │
-    ├── docs               <- A default Sphinx project; see sphinx-doc.org for details
-    │
     ├── models             
     │   ├── model_data     <- Models data required for visualized
     │   └── weight         <- Trained and serialized model weight
