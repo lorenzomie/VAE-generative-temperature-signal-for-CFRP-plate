@@ -19,7 +19,10 @@ Project Organization
     ├── models             
     │   ├── model_data     <- Models data required for visualized
     │   └── weight         <- Trained and serialized model weight
-    |
+    │       ├── band       <- model trained with all the temperature in the dataset
+    │       ├── sparse     <- model trained with clusters of temperature in the dataset
+    │       └── standard   <- model trained with all the temperature in the dataset
+    │
     ├── notebooks          <- Jupyter notebooks. Naming convention is a number (for ordering),
     │                         the creator's initials, and a short `-` delimited description, e.g.
     │                         `1.0-jqp-initial-data-exploration`.
@@ -41,13 +44,10 @@ Project Organization
     │   ├── features       <- Scripts to turn python list into features for modeling
     │   │   └── build_features.py
     │   │
-    │   ├── models         <- Scripts to train models and then use trained models to make
-    │   │   │                 predictions
-    │   │   ├── predict_model.py
-    │   │   └── train_model.py
-    │   │
-    │   └── visualization  <- Scripts to create exploratory and results oriented visualizations
-    │       └── visualize.py
+    │   └── models         <- Scripts to train models and then use trained models to make
+    │       │                 predictions
+    │       ├── predict_model.py
+    │       └── train_model.py
     │
     └── tox.ini            <- tox file with settings for running tox; see tox.readthedocs.io
 
