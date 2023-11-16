@@ -396,10 +396,10 @@ if __name__ == "__main__":
     #          - model_data_name.pkl
 
     file_Path = os.path.abspath(__file__)
-    DATA_PATH = r"..\..\..\data\processed\processed_data.pkl"
-    OUTPUT_PATH_WEIGHTS = r"..\..\..\models\weights"
-    OUTPUT_PATH_MODEL_DATA = r"..\..\..\models\model_data\model_data_"
-    FIG_PATH = r"..\..\..\reports\figures"
+    DATA_PATH = r"../../../data/processed/processed_data.pkl"
+    OUTPUT_PATH_WEIGHTS = r"../../../models/weights"
+    OUTPUT_PATH_MODEL_DATA = r"../../../models/model_data/model_data_"
+    FIG_PATH = r"../../../reports/figures"
 
     signals, data_dim, length_catch, temperature_number, t = load_processed_data(file_Path, DATA_PATH)
 

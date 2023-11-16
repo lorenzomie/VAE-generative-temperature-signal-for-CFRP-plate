@@ -3,6 +3,10 @@ Signal Generation VAE
 
 Utilizing OpenGuided Waves dataset, this project involves pitch-catch values corresponding to Lamb waves on a carbon fiber plate at various temperatures. Implementing a Variational Autoencoder (VAE), the aim is to generate missing signals in the dataset based on user input for the desired temperature."
 
+What you can do?
+------------
+
+This model is a Variational Autoencoder with a architecture made by dense layers. It will utilize a free dataset uploaded in openguidedwaves (more info on GET_START) to build a model capable of generate lamb waves signal at a desired TEMPERATURE
 Project Organization
 ------------
 

@@ -98,8 +98,8 @@ def create_dict (file_arg, frequency, counter):
 # START: data/raw
 # END:   data/interim
 file_Path = os.path.abspath(__file__)
-DATA_PATH = r"..\..\..\data\raw\OGW_CFRP_Temperature_udam"
-OUTPUT_PATH = r"..\..\..\data\interim\database.pkl"
+DATA_PATH = r"../../../data/raw/OGW_CFRP_Temperature_udam"
+OUTPUT_PATH = r"../../../data/interim/database.pkl"
 input_path = os.path.abspath(os.path.join(file_Path, DATA_PATH))
 output_path = os.path.abspath(os.path.join(file_Path, OUTPUT_PATH))
 

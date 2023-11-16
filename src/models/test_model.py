@@ -179,20 +179,20 @@ def get_model(file_Path):
         model_type = get_user_choice()
         
         if model_type == '1':
-            OUTPUT_PATH_WEIGHTS = r"..\..\..\models\weights\standard\vae.weights.h5"
-            OUTPUT_PATH_MODEL_DATA = r"..\..\..\models\model_data\model_data_STANDARD.pkl"
+            OUTPUT_PATH_WEIGHTS = r"../../../models/weights/standard/vae.weights.h5"
+            OUTPUT_PATH_MODEL_DATA = r"../../../models/model_data/model_data_STANDARD.pkl"
             print("You selected the Standard Model.\n")
             model_name = 'Standard'
             
         elif model_type == '2':
-            OUTPUT_PATH_WEIGHTS = r"..\..\..\models\weights\band\vae.weights.h5"
-            OUTPUT_PATH_MODEL_DATA = r"..\..\..\models\model_data\model_data_BAND.pkl"
+            OUTPUT_PATH_WEIGHTS = r"../../../models/weights/band/vae.weights.h5"
+            OUTPUT_PATH_MODEL_DATA = r"../../../models/model_data/model_data_BAND.pkl"
             print("You selected the Band Model.\n")
             model_name = 'Band'
             
         elif model_type == '3':
-            OUTPUT_PATH_WEIGHTS = r"..\..\..\models\weights\sparse\vae.weights.h5"
-            OUTPUT_PATH_MODEL_DATA = r"..\..\..\models\model_data\model_data_SPARSE.pkl"
+            OUTPUT_PATH_WEIGHTS = r"../../../models/weights/sparse/vae.weights.h5"
+            OUTPUT_PATH_MODEL_DATA = r"../../../models/model_data/model_data_SPARSE.pkl"
             print("You selected the Sparse Model.\n")
             model_name = 'Sparse'
             
