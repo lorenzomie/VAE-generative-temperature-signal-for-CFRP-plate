@@ -50,10 +50,10 @@ You should be ready to create your own Variational Autoencoder.
 
 The Makefile could execute the following command on your linux terminal with make:
 
-clean               Delete all compiled Python files
-data                Make Dataset
-create_model        Build and train a model
-test_model          Test a model once created
-lint                Lint using flake8
-requirements        Install Python Dependencies
-test_environment    Test python environment is setup correctly
+- clean               Delete all compiled Python files
+- data                Make Dataset
+- create_model        Build and train a model
+- test_model          Test a model once created
+- lint                Lint using flake8
+- requirements        Install Python Dependencies
+- test_environment    Test python environment is setup correctly
