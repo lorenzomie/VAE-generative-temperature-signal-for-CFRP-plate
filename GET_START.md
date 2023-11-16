@@ -36,4 +36,35 @@ After the repository is cloned locally, follow these steps to build the code. Ma
     ```bash
     make data
     ```
-   WARNING: Since the data to process is very large, you may have to run manually `src/data/make_dataset` and then `src
+   WARNING: Since the data to process is very large, you may have to run manually `src/data/make_dataset` and then `src/features/build_features` script in this order.
+
+6. **To Build and Train a model:**
+    ```bash
+    make create_model
+    ```
+
+    Here you could choose between 3 models of a Variational Autoencoder:
+    - STANDARD: It will use all the dataset data in terms of temperature (20 to 60 degrees).
+    - BAND: It will use only a band of temperature. You have to modify the temperatures with MIN_TEMP and MAX_TEMP (30/50 by default).
+    - SPARSE: It will use clusters of signal with similar temperature. You could change the distance of the clusters and the radius of the temperature neighborhood.
+    
+    More info available in the code.
+
+7. **To test one model created:**
+    ```bash
+    make test_model
+    ```
+
+    Here you could modify the TEMPERATURE constant in the script to generate a signal at a different temperature.
+
+You should be ready to create your own Variational Autoencoder.
+
+The Makefile could execute the following command on your linux terminal with make:
+
+- `clean`: Delete all compiled Python files
+- `data`: Make Dataset
+- `create_model`: Build and train a model
+- `test_model`: Test a model once created
+- `lint`: Lint using flake8
+- `requirements`: Install Python Dependencies
+- `test_environment`: Test python environment is set up correctly
