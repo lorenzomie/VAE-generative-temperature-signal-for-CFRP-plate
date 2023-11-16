@@ -4,13 +4,13 @@ After the repository is cloned locally, follow these steps to build the code. Ma
 
 1. **Create your virtual environment with CONDA or with venv as you prefer:**
 
-    - **CONDA:**
+    - **CONDA: change venv_name in yout desired environment name**
         ```bash
         conda create --name venv_name python=3.8
         conda activate venv_name
         ```
 
-    - **WITHOUT CONDA:**
+    - **WITHOUT CONDA: change venv_name in yout desired environment name**
         ```bash
         python3 -m venv venv_name
         source venv_name/bin/activate
