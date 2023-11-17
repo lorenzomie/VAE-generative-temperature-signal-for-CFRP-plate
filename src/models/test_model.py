@@ -170,36 +170,58 @@ def get_data_from_dict(path):
         KL_WEIGHT, enc_dec_signals, log_var, BATCH_SIZE, LEARNING_RATE, \
         temperature, band_temperature, sparse_temperature
 
-def get_model(file_Path):
+def get_model(file_Path, FORCED):
     
     FLAG = True
     
     while FLAG:
         display_model_options()
         model_type = get_user_choice()
+        if FORCED:
+            if model_type == '1':
+                OUTPUT_PATH_WEIGHTS = r"../../../models/weights/forced/standard/vae.weights.h5"
+                OUTPUT_PATH_MODEL_DATA = r"../../../models/model_data/forced_model_data_STANDARD.pkl"
+                print("You selected the Standard Model.\n")
+                model_name = 'Standard'
+                
+            elif model_type == '2':
+                OUTPUT_PATH_WEIGHTS = r"../../../models/weights/forced/band/vae.weights.h5"
+                OUTPUT_PATH_MODEL_DATA = r"../../../models/model_data/forced_model_data_BAND.pkl"
+                print("You selected the Band Model.\n")
+                model_name = 'Band'
+                
+            elif model_type == '3':
+                OUTPUT_PATH_WEIGHTS = r"../../../models/weights/forced/sparse/vae.weights.h5"
+                OUTPUT_PATH_MODEL_DATA = r"../../../models/model_data/forced_model_data_SPARSE.pkl"
+                print("You selected the Sparse Model.\n")
+                model_name = 'Sparse'
+                
+            else:
+                print("Invalid choice. Please enter a valid number (1, 2, or 3).")
         
-        if model_type == '1':
-            OUTPUT_PATH_WEIGHTS = r"../../../models/weights/standard/vae.weights.h5"
-            OUTPUT_PATH_MODEL_DATA = r"../../../models/model_data/model_data_STANDARD.pkl"
-            print("You selected the Standard Model.\n")
-            model_name = 'Standard'
-            
-        elif model_type == '2':
-            OUTPUT_PATH_WEIGHTS = r"../../../models/weights/band/vae.weights.h5"
-            OUTPUT_PATH_MODEL_DATA = r"../../../models/model_data/model_data_BAND.pkl"
-            print("You selected the Band Model.\n")
-            model_name = 'Band'
-            
-        elif model_type == '3':
-            OUTPUT_PATH_WEIGHTS = r"../../../models/weights/sparse/vae.weights.h5"
-            OUTPUT_PATH_MODEL_DATA = r"../../../models/model_data/model_data_SPARSE.pkl"
-            print("You selected the Sparse Model.\n")
-            model_name = 'Sparse'
-            
         else:
-            print("Invalid choice. Please enter a valid number (1, 2, or 3).")
+            if model_type == '1':
+                OUTPUT_PATH_WEIGHTS = r"../../../models/weights/standard/vae.weights.h5"
+                OUTPUT_PATH_MODEL_DATA = r"../../../models/model_data/model_data_STANDARD.pkl"
+                print("You selected the Standard Model.\n")
+                model_name = 'Standard'
+                
+            elif model_type == '2':
+                OUTPUT_PATH_WEIGHTS = r"../../../models/weights/band/vae.weights.h5"
+                OUTPUT_PATH_MODEL_DATA = r"../../../models/model_data/model_data_BAND.pkl"
+                print("You selected the Band Model.\n")
+                model_name = 'Band'
+                
+            elif model_type == '3':
+                OUTPUT_PATH_WEIGHTS = r"../../../models/weights/sparse/vae.weights.h5"
+                OUTPUT_PATH_MODEL_DATA = r"../../../models/model_data/model_data_SPARSE.pkl"
+                print("You selected the Sparse Model.\n")
+                model_name = 'Sparse'
+                
+            else:
+                print("Invalid choice. Please enter a valid number (1, 2, or 3).")
         
-
+        
         weights_path = os.path.abspath(os.path.join(file_Path, OUTPUT_PATH_WEIGHTS))
         model_data_path = os.path.abspath(os.path.join(file_Path, OUTPUT_PATH_MODEL_DATA))
 
@@ -275,6 +297,7 @@ def plot_gen_signal(input_temperature, band_temperature, sparse_temperature, \
 
     idx = (np.abs(z_T - TEMPERATURE)).argmin()
     signal_val = normalized_signals[idx]
+    train_temp = temperature
     print(f'The nearest known signal is at T: {z_T[idx]:.2f}°')
     
     if model_name == 'Band':
@@ -282,12 +305,14 @@ def plot_gen_signal(input_temperature, band_temperature, sparse_temperature, \
         # Nearest signal in the training dataset (if you want to plot)
         training_signal_val = model_signal[idx2]
         training_temp_val = band_temperature[idx2]
+        train_temp = band_temperature
         print(f'The nearest training signal is at T: {training_temp_val:.2f}°')
     elif model_name == 'Sparse':
         idx2 = (np.abs(np.array(sparse_temperature) - TEMPERATURE)).argmin()
         # Nearest signal in the training dataset (if you want to plot)
         training_signal_val = model_signal[idx2]
         training_temp_val = sparse_temperature[idx2]
+        train_temp = sparse_temperature
         print(f'The nearest training signal is at T: {training_temp_val:.2f}°')
         pass
     
@@ -302,17 +327,38 @@ def plot_gen_signal(input_temperature, band_temperature, sparse_temperature, \
     plt.legend()
     plt.title(f'Lamb Wave at {T_check:.2f}')
     plt.show()
+    return train_temp
 
 def error_metric(normalized_signal, vae, relevance_idx):
     recon_signals = vae(normalized_signal)
     rmse = tf.sqrt(tf.reduce_mean(
         tf.square(normalized_signal[:, :relevance_idx] - recon_signals[:, :relevance_idx])))
     print(f"RMSE: {rmse:.6f}")
-    
+
+def plot_rmse(normalized_signals, temperature, vae, relevance_idx, model_name):
+    RMSE = []
+    labels = [(int(temp) - int(temp) % 2) for temp in z_T]
+    recon_signals = vae(normalized_signals)
+    cut_signals = normalized_signals[:, :relevance_idx]
+    cut_recon_signals = recon_signals[:, :relevance_idx]
+    for i in range(len(cut_signals[:, 0])):
+        err = tf.sqrt(tf.reduce_mean(tf.square(cut_signals[i] - cut_recon_signals[i])))
+        RMSE.append(err)
+
+    plt.scatter(temperature, RMSE, label = f"RMSE", c = labels)
+    plt.xlabel('T [°]')
+    plt.ylabel('RMSE')
+    plt.legend()
+    plt.title(f'Root Mean Square Error in {model_name}')
+    plt.show()
+
 if __name__ == '__main__':
 
+    # If you want the forced model type FORCE == True otherwise is False by default
+    FORCED = True
+    
     file_Path = os.path.abspath(__file__)
-    weights_path, model_data_path, model_name = get_model(file_Path)
+    weights_path, model_data_path, model_name = get_model(file_Path, FORCED)
     
     z_x, z_y, z_T, t, normalized_signals, model_signal, length_catch, \
     KL_WEIGHT, enc_dec_signals, log_var, BATCH_SIZE, LEARNING_RATE, \
@@ -323,7 +369,7 @@ if __name__ == '__main__':
     vae.encoder.summary()
     vae.decoder.summary()
     
-    vae.load_weights(weights_path)
+    vae.load_weights(weights_path, FORCED)
 
     # Transform all the variables into numpy array and initializing the data
     z_x = np.array(z_x, dtype=float)
@@ -336,6 +382,7 @@ if __name__ == '__main__':
     # SELECT THE TEMPERATURE
     TEMPERATURE = 23.70 #[°]
     MAX_IDX = 4500
-    plot_gen_signal(TEMPERATURE, band_temperature, sparse_temperature, \
+    train_temp = plot_gen_signal(TEMPERATURE, band_temperature, sparse_temperature, \
                     line, z_T, normalized_signals, model_name, vae, t, MAX_IDX)
     error_metric(normalized_signals, vae, MAX_IDX)
+    plot_rmse(normalized_signals, temperature, vae, MAX_IDX, model_name)
