@@ -31,6 +31,7 @@ Project Organization
     │                         `1.0-jqp-initial-data-exploration`.
     │
     ├── references         <- Data dictionaries, manuals, and all other explanatory materials.
+    │   └── print_h5tree.py<- Generate the h5 tree to understand the structure of the dataset
     │
     ├── reports            <- Generated analysis as HTML, PDF, LaTeX, etc.
     │   └── figures        <- Generated graphics and figures to be used in reporting
