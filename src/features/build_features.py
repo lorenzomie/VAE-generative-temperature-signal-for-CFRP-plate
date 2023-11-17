@@ -6,7 +6,7 @@ Author: Lorenzo Miele, Luca Lomazzi
 Parameters:
 -----------
 database_path : str, optional
-    File path to the database (default: 'database1.pkl').
+    File path to the database (default: 'database.pkl').
     
 frequencies : list of int, optional
     Frequencies (kHz) to include in feature vectors.
