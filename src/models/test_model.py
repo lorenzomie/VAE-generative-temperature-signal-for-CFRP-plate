@@ -103,7 +103,7 @@ class VAE(keras.Model):
         _, _, z = self.encoder(inputs)
         reconstructed = self.decoder(z)
         return reconstructed
-    
+
     @property
     def metrics(self):
         return [
@@ -237,6 +237,28 @@ def get_model(file_Path, FORCED):
 
     return weights_path, model_data_path, model_name
 
+def get_training_latent_space(model_signal, vae, temperature, \
+        band_temperature, sparse_temperature, model_type):
+    z_x = []
+    z_y = []
+    
+    if model_type == 'Standard':
+        z_T = temperature
+    elif model_type == 'Band':
+        z_T = band_temperature
+    elif model_type == 'Sparse':
+        z_T = sparse_temperature
+    else:
+        print("Invalid choice. Please enter a valid number (1, 2, or 3).")
+        
+    for i in range(np.shape(model_signal)[0]):
+       z_mean, _, _ = vae.encoder(model_signal[i:i+1])
+       z_x.append(z_mean[0,0])
+       z_y.append(z_mean[0,1])
+       
+    return z_x, z_y, z_T
+
+       
 def simple_PCA(z_x, z_y, z_T):
     # Implementing a "3D regression model" by a PCA utilizing Singular Value Decomposition
 
@@ -295,20 +317,20 @@ def plot_gen_signal(input_temperature, band_temperature, sparse_temperature, \
 
     # Retrieving the input signal with the nearest temperature
 
-    idx = (np.abs(z_T - TEMPERATURE)).argmin()
+    idx = (np.abs(z_T - input_temperature)).argmin()
     signal_val = normalized_signals[idx]
     train_temp = temperature
     print(f'The nearest known signal is at T: {z_T[idx]:.2f}°')
     
     if model_name == 'Band':
-        idx2 = (np.abs(np.array(band_temperature) - TEMPERATURE)).argmin()
+        idx2 = (np.abs(np.array(band_temperature) - input_temperature)).argmin()
         # Nearest signal in the training dataset (if you want to plot)
         training_signal_val = model_signal[idx2]
         training_temp_val = band_temperature[idx2]
         train_temp = band_temperature
         print(f'The nearest training signal is at T: {training_temp_val:.2f}°')
     elif model_name == 'Sparse':
-        idx2 = (np.abs(np.array(sparse_temperature) - TEMPERATURE)).argmin()
+        idx2 = (np.abs(np.array(sparse_temperature) - input_temperature)).argmin()
         # Nearest signal in the training dataset (if you want to plot)
         training_signal_val = model_signal[idx2]
         training_temp_val = sparse_temperature[idx2]
@@ -319,16 +341,128 @@ def plot_gen_signal(input_temperature, band_temperature, sparse_temperature, \
     latent_vec = tf.constant([z1, z2], dtype=tf.float32)
     latent_vec = tf.expand_dims(latent_vec, 0) # expand the input to have compatible dimensions
     recon_signal = vae.decoder(latent_vec)
-    plt.plot(t, signal_val, label = f"Nearest signal in the dataset at T: {z_T[idx]:.2f}")
+    plt.plot(t, signal_val, label = f"Nearest signal in the dataset at T: {z_T[idx]:.2f}°")
     plt.axvline(x=t[cut_idx], color='red', linestyle='--', label='Cutting Line for metric')
     plt.plot(t, recon_signal[0], label = "Reconstructed signal")
     plt.xlabel('t [s]')
     plt.ylabel('signal')
     plt.legend()
-    plt.title(f'Lamb Wave at {T_check:.2f}')
+    plt.title(f'Lamb Wave at {T_check:.2f}°')
     plt.show()
     return train_temp
 
+def plot_gen_signal_v2(input_temperature, line, z_T, normalized_signals, \
+                    model_name, vae, t):
+    
+    if (len(input_temperature) != 4):
+        raise ValueError("Input temperature must have a length of 4.")
+        
+    T_MID = 40
+    idx_mid = (np.abs(z_T - T_MID)).argmin()
+    mid_signal = normalized_signals[idx_mid]
+    mid_temp = temperature
+    signals = []
+    sig_temp = []
+    recon_signals = []
+    xmin = 0
+    xmax = 0.0003
+    
+    for temp in input_temperature:
+        z1, z2, _ = find_nearest(line, temp, dimension = 2)
+    
+        # Retrieving the input signal with the nearest temperature
+
+        idx = (np.abs(z_T - temp)).argmin()
+        signal_val = normalized_signals[idx]
+        
+        latent_vec = tf.constant([z1, z2], dtype=tf.float32)
+        latent_vec = tf.expand_dims(latent_vec, 0) # expand the input to have compatible dimensions
+        recon_signal = vae.decoder(latent_vec)
+        signals.append(signal_val)
+        sig_temp.append(z_T[idx])
+        recon_signals.append(recon_signal[0])
+
+    # First signal
+    plt.subplot(2, 2, 1)
+    plt.plot(t, signals[0], label=f"Nearest signal at T: {sig_temp[0]:.2f}°")
+    plt.plot(t, recon_signals[0], label="Reconstructed signal")
+    plt.plot(t, mid_signal, label=f"Signal at 40°")
+    plt.ylabel('signal')
+    plt.legend()
+    plt.title(f"Signal at {input_temperature[0]}°")
+    plt.xlim([xmin, xmax])
+    
+    # Second signal
+    plt.subplot(2, 2, 2)
+    plt.plot(t, signals[1], label=f"Nearest signal at T: {sig_temp[1]:.2f}°")
+    plt.plot(t, recon_signals[1], label="Reconstructed signal")
+    plt.plot(t, mid_signal, label=f"Signal at 40°")
+    plt.ylabel('signal')
+    plt.legend()
+    plt.title(f"Signal at {input_temperature[1]}°")
+    plt.xlim([xmin, xmax])
+    
+    # Third signal
+    plt.subplot(2, 2, 3)
+    plt.plot(t, signals[2], label=f"Nearest signal at T: {sig_temp[2]:.2f}°")
+    plt.plot(t, recon_signals[2], label="Reconstructed signal")
+    plt.plot(t, mid_signal, label=f"Signal at 40°")
+    plt.xlabel('t [s]')
+    plt.ylabel('signal')
+    plt.legend()
+    plt.title(f"Signal at {input_temperature[2]}°")
+    plt.xlim([xmin, xmax])
+    
+    # Fourth signal
+    plt.subplot(2, 2, 4)
+    plt.plot(t, signals[3], label=f"Nearest signal at T: {sig_temp[3]:.2f}°")
+    plt.plot(t, recon_signals[3], label="Reconstructed signal")
+    plt.plot(t, mid_signal, label=f"Signal at 40°")
+    plt.xlabel('t [s]')
+    plt.ylabel('signal')
+    plt.legend()
+    plt.title(f"Signal at {input_temperature[3]}°")
+    plt.xlim([xmin, xmax])
+
+    plt.suptitle(f'Generated Signals with model {model_name}')
+    plt.show()
+    
+def plot_max(normalized_signals, z_T , vae, t, model_name):
+    recon_signals = vae(normalized_signals)
+    idx_max_signal = np.array(tf.argmax(normalized_signals, axis = 1))
+    idx_max_recon = np.array(tf.argmax(recon_signals, axis = 1))
+    labels = [(int(temp) - int(temp) % 2) for temp in z_T]
+    t_max_signal = []
+    t_max_recon = []
+    max_signal = []
+    max_recon = []
+    counter = 0
+    
+    for idx1, idx2 in zip(idx_max_signal, idx_max_recon):
+        t_max_signal.append(t[idx1])
+        t_max_recon.append(t[idx2])
+        max_signal.append(normalized_signals[counter, idx1])
+        max_recon.append(normalized_signals[counter, idx2])
+        counter += 1
+    
+    # Model signal
+    plt.subplot(2, 1, 1)
+    plt.scatter(t_max_signal, max_signal, label=f"time of the maximum of the input signal", c=labels)
+    plt.xlabel('t [s]')
+    plt.ylabel('Maximum of the input_signal')
+    plt.colorbar()
+    plt.legend()
+
+    # Reconstructed signal
+    plt.subplot(2, 1, 2)
+    plt.scatter(t_max_recon, max_recon, label=f"time of the maximum of reconstructed signal", c=labels)
+    plt.xlabel('t [s]')
+    plt.ylabel('Maximum of the reconstructed signal')
+    plt.colorbar()
+    plt.legend()
+    plt.suptitle(f'Maximum magnitude and time in {model_name}')
+    plt.show()
+    
 def error_metric(normalized_signal, vae, relevance_idx):
     recon_signals = vae(normalized_signal)
     rmse = tf.sqrt(tf.reduce_mean(
@@ -345,17 +479,17 @@ def plot_rmse(normalized_signals, temperature, vae, relevance_idx, model_name):
         err = tf.sqrt(tf.reduce_mean(tf.square(cut_signals[i] - cut_recon_signals[i])))
         RMSE.append(err)
 
-    plt.scatter(temperature, RMSE, label = f"RMSE", c = labels)
+    plt.scatter(temperature, RMSE, c = labels)
     plt.xlabel('T [°]')
     plt.ylabel('RMSE')
-    plt.legend()
+    plt.colorbar()
     plt.title(f'Root Mean Square Error in {model_name}')
     plt.show()
 
 if __name__ == '__main__':
 
     # If you want the forced model type FORCE == True otherwise is False by default
-    FORCED = True
+    FORCED = False
     
     file_Path = os.path.abspath(__file__)
     weights_path, model_data_path, model_name = get_model(file_Path, FORCED)
@@ -364,25 +498,38 @@ if __name__ == '__main__':
     KL_WEIGHT, enc_dec_signals, log_var, BATCH_SIZE, LEARNING_RATE, \
     temperature, band_temperature, sparse_temperature = get_data_from_dict(model_data_path)
 
+    
     # creating the class
     vae = VAE(length_catch, KL_WEIGHT, LEARNING_RATE)
     vae.encoder.summary()
     vae.decoder.summary()
     
     vae.load_weights(weights_path, FORCED)
-
+    
+    z_x_train, z_y_train, z_T_train = get_training_latent_space(model_signal, vae, temperature, \
+        band_temperature, sparse_temperature, model_name)
+    
     # Transform all the variables into numpy array and initializing the data
+    z_x_train = np.array(z_x_train, dtype=float)
+    z_y_train = np.array(z_y_train, dtype=float)
+    z_T_train = np.array(z_T_train, dtype=float)
+    
     z_x = np.array(z_x, dtype=float)
     z_y = np.array(z_y, dtype=float)
     z_T = np.array(z_T, dtype=float)
 
-    line = simple_PCA(z_x, z_y, z_T)
+    line = simple_PCA(z_x_train, z_y_train, z_T_train)
     plot_latent_space(z_x, z_y, z_T, line)
 
     # SELECT THE TEMPERATURE
     TEMPERATURE = 23.70 #[°]
     MAX_IDX = 4500
+    TEMP_ARRAY = [23, 29, 42, 58] # This array must have 4 elements
+    
     train_temp = plot_gen_signal(TEMPERATURE, band_temperature, sparse_temperature, \
                     line, z_T, normalized_signals, model_name, vae, t, MAX_IDX)
+    plot_gen_signal_v2(TEMP_ARRAY, line, z_T, normalized_signals, \
+                    model_name, vae, t)
+    plot_max(normalized_signals, z_T , vae, t, model_name)
     error_metric(normalized_signals, vae, MAX_IDX)
     plot_rmse(normalized_signals, temperature, vae, MAX_IDX, model_name)

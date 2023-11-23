@@ -134,7 +134,7 @@ class VAE(keras.Model):
             reconstruction = self.decoder(z)
             reconstruction_loss = keras.losses.mse(data, reconstruction)
             kl_loss = -0.5 * (1 + z_log_var - tf.square(z_mean) - tf.exp(z_log_var))
-            kl_loss = tf.reduce_mean(tf.reduce_sum(kl_loss, axis=1))
+            kl_loss = tf.reduce_mean(tf.reduce_sum(kl_loss, axis=1))*self.kl_weight
             total_loss = reconstruction_loss + kl_loss
         grads = tape.gradient(total_loss, self.trainable_weights)
         self.optimizer.apply_gradients(zip(grads, self.trainable_weights))
@@ -411,7 +411,7 @@ if __name__ == "__main__":
 
     NUM_EPOCHS = 100
     BATCH_SIZE = 20
-    KL_WEIGHT = 0.5
+    KL_WEIGHT = 0.05
     LEARNING_RATE = 0.005
     
     normalized_signals = normalize(signals)

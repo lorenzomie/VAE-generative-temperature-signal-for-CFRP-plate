@@ -128,6 +128,7 @@ class VAE(keras.Model):
             self.total_loss_tracker,
             self.reconstruction_loss_tracker,
             self.kl_loss_tracker,
+            self.svd_loss_tracker
         ]
 
     def train_step(self, batch_data):
@@ -139,7 +140,7 @@ class VAE(keras.Model):
             reconstruction = self.decoder(z)
             reconstruction_loss = keras.losses.mse(data, reconstruction)
             kl_loss = -0.5 * (1 + z_log_var - tf.square(z_mean) - tf.exp(z_log_var))
-            kl_loss = tf.reduce_mean(tf.reduce_sum(kl_loss, axis=1))
+            kl_loss = tf.reduce_mean(tf.reduce_sum(kl_loss, axis=1))*self.kl_weight
             data = tf.concat([z_mean, labels], axis=1)
             data_mean = tf.reduce_mean(data, axis=0)
             data_reshaped = tf.reshape(data - data_mean, [tf.shape(data)[0], -1]) 
@@ -279,7 +280,7 @@ def get_model_data(model_type, normalized_signals, data_dim):
         print("You selected the Sparse Model.")
         model_name = 'sparse'
         TEMP_INTERVAL = 2
-        CLUSTER_INTERVAL = 5
+        CLUSTER_INTERVAL = 3
         sparse_temperature, model_signal, data_dim = get_sparse_data(TEMP_INTERVAL, \
             CLUSTER_INTERVAL, temperature_number, normalized_signals, start_temp = 20)
         band_temperature = []
@@ -432,9 +433,9 @@ if __name__ == "__main__":
     DURATION = 0.00131 # total duration of the signal
 
     NUM_EPOCHS = 100
-    BATCH_SIZE = 17
-    KL_WEIGHT = 0.5
-    SVD_WEIGHT = 0.1
+    BATCH_SIZE = 25
+    KL_WEIGHT = 0.05
+    SVD_WEIGHT = 0.2
     LEARNING_RATE = 0.005
     
     normalized_signals = normalize(signals)
