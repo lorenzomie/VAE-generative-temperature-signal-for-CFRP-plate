@@ -24,6 +24,7 @@ from tensorflow import keras
 from keras import layers
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
+from matplotlib.ticker import MaxNLocator
 
 
 # Writing the model class VAE as in the previous script
@@ -297,11 +298,16 @@ def plot_latent_space(z_x, z_y, z_T, line):
     ax = fig.add_subplot(111, projection='3d')
     scatter = ax.scatter3D(z_x, z_y, z_T, c=labels, marker = 'o')
     ax.plot3D(*line.T)
-    ax.set_xlabel('x')
-    ax.set_ylabel('y')
-    ax.set_zlabel('Temperature')
+    ax.set_xlabel('x', fontsize=22, labelpad=10)
+    ax.set_ylabel('y', fontsize=22, labelpad=10)
+    ax.set_zlabel('Temperature [°C]', rotation = -180, fontsize=22, labelpad=10)
+    ax.xaxis.set_major_locator(MaxNLocator(nbins=5))
+    ax.yaxis.set_major_locator(MaxNLocator(nbins=5))
+    ax.zaxis.set_major_locator(MaxNLocator(nbins=5))
+    ax.tick_params(axis='both', which='major', labelsize=16)
     colorbar = plt.colorbar(scatter)
-    colorbar.set_label('Temperature Intensity')
+    colorbar.set_label('Temperature [°C]', fontsize = 22)
+    colorbar.ax.tick_params(labelsize=16)
     plt.show()
 
 def plot_gen_signal(input_temperature, band_temperature, sparse_temperature, \
@@ -312,7 +318,7 @@ def plot_gen_signal(input_temperature, band_temperature, sparse_temperature, \
         input_temperature (int): temperature by the user
     """
     z1, z2, T_check = find_nearest(line, input_temperature, dimension = 2)
-    print(f'Generating the signal with respect to {T_check:.2f}°')
+    print(f'Generating the signal with respect to {T_check:.2f}°C')
     print(f'The latent space point is: [{z1:.6f} , {z2: .6f}]\n')
 
     # Retrieving the input signal with the nearest temperature
@@ -320,7 +326,7 @@ def plot_gen_signal(input_temperature, band_temperature, sparse_temperature, \
     idx = (np.abs(z_T - input_temperature)).argmin()
     signal_val = normalized_signals[idx]
     train_temp = temperature
-    print(f'The nearest known signal is at T: {z_T[idx]:.2f}°')
+    print(f'The nearest known signal is at T: {z_T[idx]:.2f}°C')
     
     if model_name == 'Band':
         idx2 = (np.abs(np.array(band_temperature) - input_temperature)).argmin()
@@ -328,26 +334,26 @@ def plot_gen_signal(input_temperature, band_temperature, sparse_temperature, \
         training_signal_val = model_signal[idx2]
         training_temp_val = band_temperature[idx2]
         train_temp = band_temperature
-        print(f'The nearest training signal is at T: {training_temp_val:.2f}°')
+        print(f'The nearest training signal is at T: {training_temp_val:.2f}°C')
     elif model_name == 'Sparse':
         idx2 = (np.abs(np.array(sparse_temperature) - input_temperature)).argmin()
         # Nearest signal in the training dataset (if you want to plot)
         training_signal_val = model_signal[idx2]
         training_temp_val = sparse_temperature[idx2]
         train_temp = sparse_temperature
-        print(f'The nearest training signal is at T: {training_temp_val:.2f}°')
+        print(f'The nearest training signal is at T: {training_temp_val:.2f}°C')
         pass
     
     latent_vec = tf.constant([z1, z2], dtype=tf.float32)
     latent_vec = tf.expand_dims(latent_vec, 0) # expand the input to have compatible dimensions
     recon_signal = vae.decoder(latent_vec)
-    plt.plot(t, signal_val, label = f"Nearest signal in the dataset at T: {z_T[idx]:.2f}°")
+    plt.plot(t, signal_val, label = f"Nearest signal in the dataset at T: {z_T[idx]:.2f}°C")
     plt.axvline(x=t[cut_idx], color='red', linestyle='--', label='Cutting Line for metric')
     plt.plot(t, recon_signal[0], label = "Reconstructed signal")
     plt.xlabel('t [s]')
-    plt.ylabel('signal')
+    plt.ylabel('normalized signal [-]')
     plt.legend()
-    plt.title(f'Lamb Wave at {T_check:.2f}°')
+    plt.title(f'Lamb Wave at {T_check:.2f}°C')
     plt.show()
     return train_temp
 
@@ -381,50 +387,55 @@ def plot_gen_signal_v2(input_temperature, line, z_T, normalized_signals, \
         signals.append(signal_val)
         sig_temp.append(z_T[idx])
         recon_signals.append(recon_signal[0])
-
+        
+    # Adjust the distance between the rows of the subgraphs
+    plt.subplots_adjust(hspace=0.5)
+    
     # First signal
     plt.subplot(2, 2, 1)
-    plt.plot(t, signals[0], label=f"Nearest signal at T: {sig_temp[0]:.2f}°")
+    plt.plot(t, signals[0], label=f"Nearest signal at T: {sig_temp[0]:.2f}°C")
     plt.plot(t, recon_signals[0], label="Reconstructed signal")
     plt.plot(t, mid_signal, label=f"Signal at 40°")
-    plt.ylabel('signal')
+    plt.xlabel('t [s]')
+    plt.ylabel('normalized signal [-]')
     plt.legend()
-    plt.title(f"Signal at {input_temperature[0]}°")
+    plt.title(f"Signal at {input_temperature[0]}°C")
     plt.xlim([xmin, xmax])
     
     # Second signal
     plt.subplot(2, 2, 2)
-    plt.plot(t, signals[1], label=f"Nearest signal at T: {sig_temp[1]:.2f}°")
+    plt.plot(t, signals[1], label=f"Nearest signal at T: {sig_temp[1]:.2f}°C")
     plt.plot(t, recon_signals[1], label="Reconstructed signal")
-    plt.plot(t, mid_signal, label=f"Signal at 40°")
-    plt.ylabel('signal')
+    plt.plot(t, mid_signal, label=f"Signal at 40°C")
+    plt.xlabel('t [s]')
+    plt.ylabel('normalized signal [-]')
     plt.legend()
-    plt.title(f"Signal at {input_temperature[1]}°")
+    plt.title(f"Signal at {input_temperature[1]}°C")
     plt.xlim([xmin, xmax])
     
     # Third signal
     plt.subplot(2, 2, 3)
-    plt.plot(t, signals[2], label=f"Nearest signal at T: {sig_temp[2]:.2f}°")
+    plt.plot(t, signals[2], label=f"Nearest signal at T: {sig_temp[2]:.2f}°C")
     plt.plot(t, recon_signals[2], label="Reconstructed signal")
-    plt.plot(t, mid_signal, label=f"Signal at 40°")
+    plt.plot(t, mid_signal, label=f"Signal at 40°C")
     plt.xlabel('t [s]')
-    plt.ylabel('signal')
+    plt.ylabel('normalized signal[-]')
     plt.legend()
-    plt.title(f"Signal at {input_temperature[2]}°")
+    plt.title(f"Signal at {input_temperature[2]}°C")
     plt.xlim([xmin, xmax])
     
     # Fourth signal
     plt.subplot(2, 2, 4)
-    plt.plot(t, signals[3], label=f"Nearest signal at T: {sig_temp[3]:.2f}°")
+    plt.plot(t, signals[3], label=f"Nearest signal at T: {sig_temp[3]:.2f}°C")
     plt.plot(t, recon_signals[3], label="Reconstructed signal")
-    plt.plot(t, mid_signal, label=f"Signal at 40°")
+    plt.plot(t, mid_signal, label=f"Signal at 40°C")
     plt.xlabel('t [s]')
-    plt.ylabel('signal')
+    plt.ylabel('normalized signal [-]')
     plt.legend()
-    plt.title(f"Signal at {input_temperature[3]}°")
+    plt.title(f"Signal at {input_temperature[3]}°C")
     plt.xlim([xmin, xmax])
 
-    plt.suptitle(f'Generated Signals with model {model_name}')
+    # plt.suptitle(f'Generated Signals with model {model_name}')
     plt.show()
     
 def plot_max(normalized_signals, z_T , vae, t, model_name):
@@ -480,10 +491,13 @@ def plot_rmse(normalized_signals, temperature, vae, relevance_idx, model_name):
         RMSE.append(err)
 
     plt.scatter(temperature, RMSE, c = labels)
-    plt.xlabel('T [°]')
-    plt.ylabel('RMSE')
-    plt.colorbar()
-    plt.title(f'Root Mean Square Error in {model_name}')
+    plt.xlabel('T [°C]', fontsize=22)
+    plt.ylabel('RMSE', fontsize=22)
+    plt.tick_params(axis='both', which='major', labelsize=18)
+    cb = plt.colorbar()
+    cb.set_label('Temperature [°C]', fontsize = 22)
+    cb.ax.tick_params(labelsize=22)
+    # plt.title(f'Root Mean Square Error in {model_name}')
     plt.show()
 
 if __name__ == '__main__':
